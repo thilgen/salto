@@ -17,6 +17,7 @@ import chalk from 'chalk'
 import moment from 'moment'
 import os from 'os'
 import _ from 'lodash'
+import pluralize from 'pluralize'
 
 export const deployOrValidate = ({
   checkOnly,
@@ -46,6 +47,9 @@ export default class Prompts {
 
   public static readonly FULL_DEPLOY_SUMMARY = (numChanges: number, numErrors: number): string =>
     `Deployment partially succeeded with ${numChanges} applied change(s) and ${numErrors} error(s).`
+
+  public static readonly DEPLOY_RESULTS_SUMMARY = (deployResultsDir: string, numRecords: number): string =>
+    `Deploy Results: Wrote ${numRecords} deploy ${pluralize('record', numRecords)} to ${deployResultsDir}.`
 
   public static readonly CHANGES_DEPLOY_SUMMARY = (numChanges: number, checkOnly: boolean): string =>
     `${deployOrValidate({ checkOnly, capitalize: true, noun: true })} succeeded - ${numChanges} applied change(s).`

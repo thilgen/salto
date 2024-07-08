@@ -29,6 +29,8 @@ import { logger } from '@salto-io/logging'
 import { Workspace } from '@salto-io/workspace'
 import { mkdirp, writeFile } from '@salto-io/file'
 import path from 'path'
+import fs from 'fs'
+import util from 'util'
 import { WorkspaceCommandAction, createWorkspaceCommand } from '../command_builder'
 import { AccountsArg, ACCOUNTS_OPTION, getAndValidateActiveAccounts, getTagsForAccounts } from './common/accounts'
 import { CliOutput, CliExitCode, CliTelemetry } from '../types'
@@ -48,6 +50,7 @@ import {
   formatDeployActions,
   formatGroups,
   deployErrorsOutput,
+  deployResultsOutput,
 } from '../formatter'
 import Prompts from '../prompts'
 import { getUserBooleanInput } from '../callbacks'
@@ -100,6 +103,7 @@ type DeployArgs = {
   detailedPlan: boolean
   checkOnly: boolean
   artifactsDir?: string
+  deployResultsDir?: string
 } & AccountsArg &
   EnvArg
 
@@ -225,6 +229,28 @@ const writeArtifacts = async ({ extraProperties }: DeployResult, artifactsDir?: 
   }
 }
 
+const writeDeployResults = async (
+  output: CliOutput,
+  actionPlan: Plan,
+  deployResultsDir?: string,
+): Promise<void> => {
+  if (deployResultsDir === undefined) {
+    return
+  }
+  fs.mkdirSync(deployResultsDir, {recursive: true})
+  let numRecords = 0
+  for (const planItem of actionPlan.itemsByEvalOrder()) {
+    for (const changeItem of planItem.changes()) {
+      try {
+       fs.writeFileSync(`${deployResultsDir}/deploy-change-${numRecords += 1}.json`, util.inspect(changeItem));
+      } catch (e) {
+        log.error('Error occurred while writing deploy change record: %o', e)
+      }
+    }
+  }
+  outputLine(deployResultsOutput(deployResultsDir, numRecords), output)
+}
+
 export const action: WorkspaceCommandAction<DeployArgs> = async ({
   input,
   cliTelemetry,
@@ -258,6 +284,7 @@ export const action: WorkspaceCommandAction<DeployArgs> = async ({
     ? { success: true, errors: [] }
     : await deployPlan(actionPlan, workspace, cliTelemetry, output, force, checkOnly, actualAccounts)
   await writeArtifacts(result, input.artifactsDir)
+  await writeDeployResults(output, actionPlan, input.deployResultsDir)
   let cliExitCode = result.success ? CliExitCode.Success : CliExitCode.AppError
   // We don't flush the workspace for check-only deployments
   if (!_.isUndefined(result.changes) && !checkOnly) {
@@ -329,6 +356,13 @@ const deployDef = createWorkspaceCommand({
         alias: 'a',
         required: false,
         description: 'The directory to write the deploy artifacts to',
+        type: 'string',
+      },
+      {
+        name: 'deployResultsDir',
+        alias: 'z',
+        required: false,
+        description: 'The directory to write the deploy results to',
         type: 'string',
       },
       ACCOUNTS_OPTION,

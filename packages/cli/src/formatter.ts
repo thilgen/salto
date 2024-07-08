@@ -375,6 +375,9 @@ export const deployPhaseHeader = (checkOnly: boolean): string =>
 export const cancelDeployOutput = (checkOnly: boolean): string =>
   [emptyLine(), Prompts.CANCEL_DEPLOY(checkOnly)].join('\n')
 
+export const deployResultsOutput = (deployResultsDir: string, numRecords: number): string =>
+  [emptyLine(), Prompts.DEPLOY_RESULTS_SUMMARY(deployResultsDir, numRecords)].join('\n')
+
 export const deployErrorsOutput = (allErrors: DeployError[]): string => {
   const getErrorMessage = (err: DeployError): string =>
     formatListRecord(`${isSaltoElementError(err) ? `${err.elemID.getFullName()}: ` : ''}${err.message}`, 1)
